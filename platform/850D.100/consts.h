@@ -182,3 +182,7 @@ extern int winsys_bmp_dirty_bit_neg;
 // SJE new stuff added after we have ML menus working!
 // Not needed for early code.
 #define CANON_SHUTTER_RATING 100000
+
+// has a ranged dcache_clean() stub (platform stubs.S); enables cheaper
+// cache maintenance in FIO_WriteFile for small buffers
+#define CONFIG_HAVE_DCACHE_CLEAN

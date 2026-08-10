@@ -154,3 +154,7 @@ extern int winsys_bmp_dirty_bit_neg;
 #define MVR_FRAME_NUMBER (*(int*)(220 + MVR_190_STRUCT))
 //#define MVR_LAST_FRAME_SIZE (*(int*)(512 + MVR_752_STRUCT))
 #define MVR_BYTES_WRITTEN MEM((212 + MVR_190_STRUCT))
+
+// has a ranged dcache_clean() stub (platform stubs.S); enables cheaper
+// cache maintenance in FIO_WriteFile for small buffers
+#define CONFIG_HAVE_DCACHE_CLEAN

@@ -231,16 +231,17 @@ struct t_data_for_exif{
 
 static uint32_t badpixel_opcode[] =
 {
-    // *** all values must be in big endian order
+    // *** the DNG file is written big-endian, so these values are stored in
+    // little-endian byte order (the BE reader swaps them back)
 
-    BE(1),              // Count = 1
+    1,              // Count = 1
 
-    BE(4),              // FixBadPixelsConstant = 4
-    BE(0x01030000),     // DNG version = 1.3.0.0
-    BE(1),              // Flags = 1
-    BE(8),              // Opcode length = 8 bytes
-    BE(0),              // Constant = 0
-    BE(0),              // CFAPattern (set in code below)
+    4,              // FixBadPixelsConstant = 4
+    0x01030000,     // DNG version = 1.3.0.0
+    1,              // Flags = 1
+    8,              // Opcode length = 8 bytes
+    0,              // Constant = 0
+    0,              // CFAPattern (set in code below)
 };
 
 
@@ -412,6 +413,8 @@ static int32_t is_lossless_jpeg(struct raw_info * raw_info)
 }
 
 
+static void tiff_to_big_endian(void);
+
 static void create_dng_header(struct raw_info * raw_info){
     int32_t i,j;
     int32_t extra_offset;
@@ -527,16 +530,16 @@ static void create_dng_header(struct raw_info * raw_info){
         switch (camera_sensor.cfa_pattern)
         {
         case 0x02010100:
-            badpixel_opcode[BADPIX_CFA_INDEX] = BE(1);              // BayerPhase = 1 (top left pixel is green in a green/red row)
+            badpixel_opcode[BADPIX_CFA_INDEX] = 1;              // BayerPhase = 1 (top left pixel is green in a green/red row)
             break;
         case 0x01020001:
-            badpixel_opcode[BADPIX_CFA_INDEX] = BE(0);              // BayerPhase = 0 (top left pixel is red)
+            badpixel_opcode[BADPIX_CFA_INDEX] = 0;              // BayerPhase = 0 (top left pixel is red)
             break;
         case 0x01000201:
-            badpixel_opcode[BADPIX_CFA_INDEX] = BE(3);              // BayerPhase = 3 (top left pixel is blue)
+            badpixel_opcode[BADPIX_CFA_INDEX] = 3;              // BayerPhase = 3 (top left pixel is blue)
             break;
         case 0x00010102:
-            badpixel_opcode[BADPIX_CFA_INDEX] = BE(2);              // BayerPhase = 2 (top left pixel is green in a green/blue row)
+            badpixel_opcode[BADPIX_CFA_INDEX] = 2;              // BayerPhase = 2 (top left pixel is green in a green/blue row)
             break;
         }
 
@@ -605,7 +608,8 @@ static void create_dng_header(struct raw_info * raw_info){
 
     // TIFF file header
 
-    add_val_to_buf(0x4949, sizeof(int16_t));      // little endian
+    add_val_to_buf(0x4D4D, sizeof(int16_t));      // big endian ("MM"): the raw sensor data is big-endian,
+                                                  // so we write the file big-endian and skip the byte-swap pass
     add_val_to_buf(42, sizeof(int16_t));          // An arbitrary but carefully chosen number that further identifies the file as a TIFF file.
     add_val_to_buf(TIFF_HDR_SIZE, sizeof(int32_t)); // offset of first IFD
 
@@ -665,6 +669,113 @@ static void create_dng_header(struct raw_info * raw_info){
 
     // writing zeros to tail of dng header (just for fun)
     for (i=dng_header_buf_offset; i<dng_header_buf_size; i++) dng_header_buf[i]=0;
+
+    /* the raw sensor data is big-endian, so the DNG file is written big-endian
+     * ("MM"); convert the header (built little-endian on the ARM host) to match */
+    tiff_to_big_endian();
+}
+
+/* swap 16/32-bit little-endian values in place */
+#define TIFF_SWAP16(p) do { uint8_t *_b = (uint8_t *)(p); uint8_t _t = _b[0]; _b[0] = _b[1]; _b[1] = _t; } while(0)
+#define TIFF_SWAP32(p) do { uint8_t *_b = (uint8_t *)(p); uint8_t _t = _b[0]; _b[0] = _b[3]; _b[3] = _t; _t = _b[1]; _b[1] = _b[2]; _b[2] = _t; } while(0)
+
+/* Byte-swap a run of numeric elements (SHORT: 16-bit units; LONG/RATIONAL/
+ * SRATIONAL all consist of 32-bit units - a RATIONAL is two uint32s). */
+static void tiff_swap_elements(uint8_t *d, int32_t total, int32_t elem_size)
+{
+    for (int32_t k = 0; k < total; k += (elem_size == 2 ? 2 : 4))
+    {
+        if (elem_size == 2) TIFF_SWAP16(d + k);
+        else                TIFF_SWAP32(d + k);
+    }
+}
+
+/* Byte-swap one IFD (and the sub-IFDs it references: SubIFDs 0x14A, EXIF 0x8769).
+ * The IFD layout here is a tree (each IFD's "next" pointer is 0), so recursion
+ * terminates.  Only memory inside the header buffer is touched; entries whose
+ * data lies past it (thumbnail/raw pixels) keep their data untouched, which is
+ * correct: thumbnail bytes are byte-order independent and the raw data is
+ * already big-endian. */
+static void tiff_swap_ifd(uint8_t *buf, int32_t size, uint32_t offset)
+{
+    if (offset + 2 > (uint32_t)size)
+        return;
+
+    uint32_t count = buf[offset] | (buf[offset+1] << 8);   /* little-endian, pre-swap */
+    TIFF_SWAP16(buf + offset);
+
+    if (offset + 2 + count * 12 + 4 > (uint32_t)size)
+        return;
+
+    uint32_t sub_offsets[2];
+    int n_sub = 0;
+
+    for (uint32_t i = 0; i < count; i++)
+    {
+        uint8_t *e = buf + offset + 2 + i * 12;
+        uint16_t tag  = e[0] | (e[1] << 8);
+        uint16_t type = e[2] | (e[3] << 8);      /* bare type: T_PTR/T_SKIP flags are stripped on write */
+        uint32_t cnt  = e[4] | (e[5] << 8) | (e[6] << 16) | (e[7] << 24);
+        uint32_t val  = e[8] | (e[9] << 8) | (e[10] << 16) | (e[11] << 24);
+
+        TIFF_SWAP16(e);
+        TIFF_SWAP16(e + 2);
+        TIFF_SWAP32(e + 4);
+
+        int32_t elem_size = 0;
+        switch (type)
+        {
+            case T_SHORT:     elem_size = 2; break;
+            case T_LONG:      elem_size = 4; break;
+            case T_RATIONAL:
+            case T_SRATIONAL: elem_size = 8; break;
+            /* ASCII / BYTE / UNDEFINED: byte-order independent */
+        }
+
+        /* value field: inline data (≤4 bytes) of numeric types is a
+         * left-justified value (swap per element); byte-neutral types are a
+         * byte string (DNGVersion, ExifVersion, CFA pattern) - never swap.
+         * External data (>4 bytes) always uses a 4-byte numeric offset, which
+         * must be swapped regardless of the type.  "total" uses the real TIFF
+         * type size (ASCII/BYTE count as 1 byte each), so the external-string
+         * case is detected correctly. */
+        int32_t total = get_type_size(type) * cnt;
+        if (total <= 4)
+        {
+            if (elem_size)
+                tiff_swap_elements(e + 8, total, elem_size);
+        }
+        else
+        {
+            TIFF_SWAP32(e + 8);
+            if (elem_size && val + total <= (uint32_t)size)
+                tiff_swap_elements(buf + val, total, elem_size);
+        }
+
+        if (elem_size == 4 && cnt == 1 && (tag == 0x14A || tag == 0x8769) && n_sub < 2)
+            sub_offsets[n_sub++] = val;   /* SubIFDs / EXIF_IFD offsets (read pre-swap, value preserved) */
+    }
+
+    TIFF_SWAP32(buf + offset + 2 + count * 12);   /* next-IFD pointer (0 in our headers) */
+
+    for (int i = 0; i < n_sub; i++)
+        tiff_swap_ifd(buf, size, sub_offsets[i]);
+}
+
+/* Convert the in-memory DNG header from little- to big-endian byte order. */
+static void tiff_to_big_endian(void)
+{
+    if (!dng_header_buf || dng_header_buf_size < TIFF_HDR_SIZE)
+        return;
+
+    uint8_t *buf = (uint8_t *)dng_header_buf;
+
+    /* TIFF header: "MM" magic stays as written, version 42 and the first-IFD
+     * offset are numeric values and get swapped */
+    TIFF_SWAP16(buf + 2);
+    TIFF_SWAP32(buf + 4);
+
+    tiff_swap_ifd(buf, dng_header_buf_size, TIFF_HDR_SIZE);
 }
 
 static void free_dng_header(void)
@@ -745,10 +856,8 @@ static int32_t write_dng(FILE* fd, struct raw_info * raw_info)
         if (write(fd, dng_header_buf, dng_header_buf_size) != dng_header_buf_size) return 0;
         if (write(fd, thumbnail_buf, dng_th_width*dng_th_height*3) != dng_th_width*dng_th_height*3) return 0;
 
-        if (!is_lossless_jpeg(raw_info))
-        {
-            reverse_bytes_order(UNCACHEABLE(rawadr), camera_sensor.raw_size);
-        }
+        /* the raw sensor data is big-endian and the DNG header is now written
+         * big-endian as well, so no byte-swap pass is needed here */
         if (write(fd, UNCACHEABLE(rawadr), camera_sensor.raw_size) != camera_sensor.raw_size) return 0;
 
         free_dng_header();

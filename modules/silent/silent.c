@@ -1411,10 +1411,6 @@ silent_pic_take_fullres(int interactive)
     
     display_off();
 
-    /* we'll need these later */
-    struct JobClass * copy_job = 0;
-    void* copy_buf = 0;
-
     /* from now on, we can no longer jump to "err" */
 
     /* 
@@ -1513,19 +1509,9 @@ silent_pic_take_fullres(int interactive)
 
     /* prepare to save the file */
     struct raw_info local_raw_info = raw_info;
-    
-    /* DNG only: make a copy of the image, because save_dng will overwrite the contents of the raw buffer */
-    if (silent_pic_file_format == SILENT_PIC_FILE_FORMAT_DNG)
-    {
-        copy_job = (void*) call("FA_CreateTestImage");
-        copy_buf = (void*) call("FA_GetCrawBuf", copy_job);
-
-        if (!copy_buf)
-        {
-            bmp_printf(FONT_MED, 0, 0, "Memory error");
-            goto cleanup;
-        }
-    }
+    /* save_dng writes the big-endian sensor data straight to the file
+     * (no in-place byte swap), so the raw buffer is not modified and no
+     * protective copy is needed */
     
     /* save the raw image as DNG or MLV */
     int save_time;
@@ -1543,12 +1529,6 @@ silent_pic_take_fullres(int interactive)
         bmp_printf(FONT_MED, 0, 83, "Captured in %d ms.", capture_time);
         
         int t0 = get_ms_clock();
-        
-        if (copy_buf)
-        {
-            local_raw_info.buffer = copy_buf;
-            memcpy(local_raw_info.buffer, raw_info.buffer, local_raw_info.frame_size);
-        }
 
         ok = silent_pic_save_file(&local_raw_info);
         int t1 = get_ms_clock();
@@ -1587,11 +1567,6 @@ cleanup:
      * (SRM_ChangeMemoryManagementForImage)
      */
     call("FA_DeleteTestImage", job);
-    
-    if (copy_job)
-    {
-        call("FA_DeleteTestImage", copy_job);
-    }
     
     long_exposure_fix();
     gui_uilock(UILOCK_NONE);

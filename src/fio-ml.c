@@ -7,6 +7,11 @@
 #include "config.h"
 #include "fio-ml.h"
 
+#ifdef CONFIG_HAVE_DCACHE_CLEAN
+/* ranged dcache clean stub, only present on some platforms (see their consts.h) */
+extern void dcache_clean(uint32_t addr, uint32_t size);
+#endif
+
 #if defined(MODULE)
     #error "Module builds shouldn't use fio-ml.c directly!  Call the exports of ML!"
 #endif
@@ -666,9 +671,24 @@ int FIO_WriteFile( FILE* stream, const void* ptr, size_t count )
     */
     if (ptr == CACHEABLE(ptr))
     {
-        /* write back all data to RAM */
-        /* overhead is minimal (see selftest.mo for benchmark) */
-        sync_caches();
+        /* write back dirty data to RAM before the DMA engine reads it via the
+         * uncacheable alias below.  For small buffers (headers, metadata) a
+         * ranged dcache clean is much cheaper than a full cache sync; for
+         * large buffers the full sync only has to clean the lines the buffer
+         * leaves dirty in the (small) cache, so it stays the better choice.
+         * Cams without a ranged-clean stub fall back to sync_caches(). */
+        if (count <= 64*1024)
+        {
+            #ifdef CONFIG_HAVE_DCACHE_CLEAN
+            dcache_clean((uint32_t)ptr, count);
+            #else
+            sync_caches();
+            #endif
+        }
+        else
+        {
+            sync_caches();
+        }
     }
 
     // Here we force uncacheable, as new cams require this for FIO ops.

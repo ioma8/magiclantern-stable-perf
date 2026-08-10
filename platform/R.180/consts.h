@@ -223,3 +223,7 @@ extern int winsys_bmp_dirty_bit_neg;
 #define FORMAT_BTN       BGMT_INFO
 #define FORMAT_BTN_NAME  "[INFO]"
 #define FORMAT_STR_LOC   13      //WRONG, taken from 5D3
+
+// has a ranged dcache_clean() stub (platform stubs.S); enables cheaper
+// cache maintenance in FIO_WriteFile for small buffers
+#define CONFIG_HAVE_DCACHE_CLEAN

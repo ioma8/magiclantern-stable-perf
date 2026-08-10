@@ -164,3 +164,7 @@ extern int winsys_bmp_dirty_bit_neg;
 //address of XimrContext structure to redraw in FEATURE_VRAM_RGBA
 //0x5d138 + 0x10 is pointer to XimrContext struct
 #define XIMR_CONTEXT ((void*)0x5d148)
+
+// has a ranged dcache_clean() stub (platform stubs.S); enables cheaper
+// cache maintenance in FIO_WriteFile for small buffers
+#define CONFIG_HAVE_DCACHE_CLEAN

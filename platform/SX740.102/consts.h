@@ -179,3 +179,7 @@ extern int winsys_bmp_dirty_bit_neg;
 // XCM + 0x10 is first XC
 #define XCM_PTR *(unsigned int *)0xF448
 #define XIMR_CONTEXT ((unsigned int *)(XCM_PTR + 0x10))
+
+// has a ranged dcache_clean() stub (platform stubs.S); enables cheaper
+// cache maintenance in FIO_WriteFile for small buffers
+#define CONFIG_HAVE_DCACHE_CLEAN
