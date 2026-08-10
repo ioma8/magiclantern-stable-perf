@@ -34,7 +34,9 @@
 #define MAX_WRITER_THREADS 2
 
 /* pre-create that number of files befroe recording starts so that file catalog doesnt have to get updated while recording */
-#define MAX_PRECREATE_FILES 8
+/* 32: covers long recordings so the writer never falls back to FIO_CreateFile
+ * mid-recording (a known write-stall source); empty files are cleaned up after */
+#define MAX_PRECREATE_FILES 32
 
 #define FRAMING_CENTER (dolly_mode == 0)
 #define FRAMING_PANNING (dolly_mode == 1)
