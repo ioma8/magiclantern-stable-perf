@@ -6697,7 +6697,14 @@ static void menu_reload_flags(char* filename)
     free(buf);
 }
 
-#define CFG_APPEND(fmt, ...) do { cfglen += snprintf(cfg + cfglen, CFG_SIZE - cfglen, fmt, ## __VA_ARGS__); } while(0)
+/* snprintf returns the would-be length; accumulate only what was actually
+ * written, and stop once the buffer is full (otherwise cfglen can exceed
+ * CFG_SIZE and CFG_SIZE - cfglen underflows in the next call) */
+#define CFG_APPEND(fmt, ...) do { \
+    int _avail = CFG_SIZE - cfglen; \
+    if (_avail > 0) \
+        cfglen += MIN(snprintf(cfg + cfglen, _avail, fmt, ## __VA_ARGS__), _avail - 1); \
+} while(0)
 #define CFG_SIZE (256*1024)
 
 static int menu_save_unloaded_flags(char* filename, char * cfg, int cfglen)

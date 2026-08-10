@@ -56,8 +56,10 @@ void mlv_fill_lens(mlv_lens_hdr_t *hdr, uint64_t start_timestamp)
     char buf[33];
     snprintf(buf, sizeof(buf), "%X%08X", (uint32_t) (lens_info.lens_serial >> 32), (uint32_t)(lens_info.lens_serial & 0xFFFFFFFF));
     
-    strncpy((char *)hdr->lensName, lens_info.name, 32);
-    strncpy((char *)hdr->lensSerial, buf, 32);
+    strncpy((char *)hdr->lensName, lens_info.name, sizeof(hdr->lensName) - 1);
+    hdr->lensName[sizeof(hdr->lensName) - 1] = 0;
+    strncpy((char *)hdr->lensSerial, buf, sizeof(hdr->lensSerial) - 1);
+    hdr->lensSerial[sizeof(hdr->lensSerial) - 1] = 0;
 }
 
 /*
@@ -92,7 +94,8 @@ void mlv_fill_styl(mlv_styl_hdr_t *hdr, uint64_t start_timestamp)
     hdr->saturation = picstyle_get_current_saturation();
     hdr->colortone = picstyle_get_current_color_tone();
 
-    strncpy((char *)hdr->picStyleName, picstyle_get_current_name(), sizeof(hdr->picStyleName));
+    strncpy((char *)hdr->picStyleName, picstyle_get_current_name(), sizeof(hdr->picStyleName) - 1);
+    hdr->picStyleName[sizeof(hdr->picStyleName) - 1] = 0;
 }
 
 void mlv_fill_expo(mlv_expo_hdr_t *hdr, uint64_t start_timestamp)
@@ -171,6 +174,12 @@ void mlv_build_vers(mlv_vers_hdr_t **hdr, uint64_t start_timestamp, const char *
 {
     int block_length = (strlen(version_string) + sizeof(mlv_vers_hdr_t) + 1 + 3) & ~3;
     mlv_vers_hdr_t *header = malloc(block_length);
+    if (header == NULL)
+    {
+        printf("mlv: could not allocate VERS block (%d bytes)\n", block_length);
+        *hdr = NULL;
+        return;
+    }
     
     /* prepare header */
     mlv_set_type((mlv_hdr_t *)header, "VERS");
@@ -295,7 +304,11 @@ int mlv_write_vers_blocks(FILE *f, uint64_t mlv_start_timestamp)
                 mlv_build_vers(&hdr, mlv_start_timestamp, version_string);
                 
                 /* try to write to output file */
-                if(FIO_WriteFile(f, hdr, hdr->blockSize) != (int)hdr->blockSize)
+                if (hdr == NULL)
+                {
+                    error = 1;
+                }
+                else if(FIO_WriteFile(f, hdr, hdr->blockSize) != (int)hdr->blockSize)
                 {
                     error = 1;
                 }

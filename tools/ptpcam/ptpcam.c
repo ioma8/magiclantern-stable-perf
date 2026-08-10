@@ -374,7 +374,7 @@ void
 close_usb(PTP_USB* ptp_usb, struct usb_device* dev)
 {
     if (ptp_usb == NULL
-        || usb_device == NULL)
+        || dev == NULL)
         return;
     //clear_stall(ptp_usb);
     usb_release_interface(ptp_usb->handle,

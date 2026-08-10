@@ -111,4 +111,76 @@
 #define __attribute_formatarg__(x) __attribute__((format_arg(x)))
 #endif
 
+/*
+ * Compatibility with newlib's sys/cdefs.h.
+ * These headers are first on the include path, so they shadow the toolchain's
+ * sys/cdefs.h.  Newlib headers (e.g. setjmp.h) that get included by this code
+ * expect the following macros to exist; without them, gcc-arm-none-eabi >= 15
+ * fails to parse e.g. `void longjmp (...) __dead2;`.
+ * Guarded with #ifndef so a real newlib cdefs.h can still win when included.
+ */
+#ifndef __dead2
+#if (__GNUC__ > 2) || ((__GNUC__ == 2) && (__GNUC_MINOR__ >= 5))
+#define __dead2 __attribute__((__noreturn__))
+#else
+#define __dead2
+#endif
+#endif
+
+#ifndef __returns_twice
+#if defined(__GNUC__) && ((__GNUC__ > 4) || ((__GNUC__ == 4) && (__GNUC_MINOR__ >= 8)))
+#define __returns_twice __attribute__((__returns_twice__))
+#else
+#define __returns_twice
+#endif
+#endif
+
+#ifndef __pure2
+#define __pure2 __attribute__((__const__))
+#endif
+
+#ifndef __unused
+#define __unused __attribute__((__unused__))
+#endif
+
+#ifndef __used
+#define __used __attribute__((__used__))
+#endif
+
+#ifndef __packed
+#define __packed __attribute__((__packed__))
+#endif
+
+#ifndef __aligned
+#define __aligned(x) __attribute__((__aligned__(x)))
+#endif
+
+#ifndef __weak_symbol
+#define __weak_symbol __attribute__((__weak__))
+#endif
+
+#ifndef __restrict
+#define __restrict
+#endif
+
+#ifndef __restrict_arr
+#define __restrict_arr
+#endif
+
+#ifndef __EXPORT
+#define __EXPORT
+#endif
+
+#ifndef __IMPORT
+#define __IMPORT
+#endif
+
+#ifndef __printflike
+#define __printflike(fmtarg, firstvararg)
+#endif
+
+#ifndef __scanflike
+#define __scanflike(fmtarg, firstvararg)
+#endif
+
 #endif

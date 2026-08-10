@@ -375,6 +375,17 @@ void set_out_file_name(char *outname, char *inname)
     outname[namelen-1] = 'V';
 }
 
+/* guard against a crafted MLV header claiming a block larger than our struct:
+ * fread() into the fixed-size struct would overflow the stack */
+static void check_sidecar_block_size(uint32_t block_size, size_t hdr_size, const char *name)
+{
+    if(block_size > hdr_size)
+    {
+        printf(" Error: unexpected %s block size %u\n", name, (unsigned)block_size);
+        exit(1);
+    }
+}
+
 int parse_sidecar(char *scname)
 {
     FILE* sidecar = fopen(scname, "rb");
@@ -411,6 +422,7 @@ int parse_sidecar(char *scname)
             if(!idntf)
             {
                 file_set_pos(sidecar, -mlv_hdr_t_size, SEEK_CUR);
+                check_sidecar_block_size(mlv_hdr.blockSize, sizeof(idnt_hdr), "IDNT");
                 if(fread(&idnt_hdr, mlv_hdr.blockSize, 1, sidecar) != 1)
                 {
                     printf(" Error: could not read from %s", scname);
@@ -428,6 +440,7 @@ int parse_sidecar(char *scname)
             if(!expof)
             {
                 file_set_pos(sidecar, -mlv_hdr_t_size, SEEK_CUR);
+                check_sidecar_block_size(mlv_hdr.blockSize, sizeof(expo_hdr), "EXPO");
                 if(fread(&expo_hdr, mlv_hdr.blockSize, 1, sidecar) != 1)
                 {
                     printf(" Error: could not read from %s", scname);
@@ -445,6 +458,7 @@ int parse_sidecar(char *scname)
             if(!lensf)
             {
                 file_set_pos(sidecar, -mlv_hdr_t_size, SEEK_CUR);
+                check_sidecar_block_size(mlv_hdr.blockSize, sizeof(lens_hdr), "LENS");
                 if(fread(&lens_hdr, mlv_hdr.blockSize, 1, sidecar) != 1)
                 {
                     printf(" Error: could not read from %s", scname);
@@ -462,6 +476,7 @@ int parse_sidecar(char *scname)
             if(!wbalf)
             {
                 file_set_pos(sidecar, -mlv_hdr_t_size, SEEK_CUR);
+                check_sidecar_block_size(mlv_hdr.blockSize, sizeof(wbal_hdr), "WBAL");
                 if(fread(&wbal_hdr, mlv_hdr.blockSize, 1, sidecar) != 1)
                 {
                     printf(" Error: could not read from %s", scname);

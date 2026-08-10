@@ -45,7 +45,7 @@
 
 #define SVALLEN		256
 #define SVALRET(s) { \
-			if (n>=SVALLEN) s[SVALLEN]='\0'; \
+			if (n>=SVALLEN) s[SVALLEN-1]='\0'; \
 			return s;\
 }
 
@@ -855,6 +855,12 @@ ptp_prop_tostr (PTPParams* params, PTPDevicePropDesc *dpd, void *val)
 	void *value=val==NULL?dpd->CurrentValue:val;
 
 	memset(&strval, 0, SVALLEN);
+
+	if (value == NULL)
+	{
+		snprintf(strval, SVALLEN, "(null)");
+		return strval;
+	}
 
 	switch (dpd->DataType) {
 		case PTP_DTC_INT8:

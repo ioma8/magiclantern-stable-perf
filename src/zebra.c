@@ -1508,6 +1508,9 @@ void FAST peak_disp_filter()
     if (lv)
     {
         display_filter_get_buffers(&src_buf, &dst_buf);
+        /* on the very first invocation the filter buffers are not known yet;
+         * the other callers of display_filter_get_buffers all guard for this */
+        if (!src_buf || !dst_buf) return;
     }
     else if (PLAY_OR_QR_MODE)
     {
@@ -1532,7 +1535,7 @@ void FAST peak_disp_filter()
     // the percentage selected in menu represents how many pixels are considered in focus
     // let's say above some FOCUSED_THR
     // so, let's scale edge value so that e=thr maps to e=FOCUSED_THR
-    for (int i = 0, i_fthr = 0; i < 255; i++, i_fthr += FOCUSED_THR)
+    for (int i = 0, i_fthr = 0; i <= 255; i++, i_fthr += FOCUSED_THR)
         peak_scaling[i] = MIN(i_fthr / thr, 255);
     
     int n_over = 0;

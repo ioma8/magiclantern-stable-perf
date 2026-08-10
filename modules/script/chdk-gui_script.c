@@ -81,7 +81,7 @@ static int check_param(const char *param)
     register unsigned int n=0, /*i=0,*/ l;
 
     ptr = skip_whitespace(ptr);
-    if (ptr[0] && (ptr[0]>='a' && ptr[0]<='a'+SCRIPT_NUM_PARAMS) && (ptr[1]==' ' || ptr[1]=='\t'))
+    if (ptr[0] && (ptr[0]>='a' && ptr[0]<='a'+SCRIPT_NUM_PARAMS-1) && (ptr[1]==' ' || ptr[1]=='\t'))
     {
         n = ptr[0]-'a';                                 // VAR
         ptr = skip_whitespace(ptr+2);                   // skip to TITLE
@@ -110,7 +110,7 @@ static int process_param(const char *param)
     register int n=0, /*i=0,*/ l;
 
     ptr = skip_whitespace(ptr);
-    if (ptr[0] && (ptr[0]>='a' && ptr[0]<='a'+SCRIPT_NUM_PARAMS) && (ptr[1]==' ' || ptr[1]=='\t'))
+    if (ptr[0] && (ptr[0]>='a' && ptr[0]<='a'+SCRIPT_NUM_PARAMS-1) && (ptr[1]==' ' || ptr[1]=='\t'))
     {
         n = ptr[0]-'a';
         ptr = skip_whitespace(ptr+2);
@@ -134,7 +134,7 @@ static void process_default(const char *param)
     register int n;
 
     ptr = skip_whitespace(ptr);
-    if (ptr[0] && (ptr[0]>='a' && ptr[0]<='a'+SCRIPT_NUM_PARAMS) && (ptr[1]==' ' || ptr[1]=='\t'))
+    if (ptr[0] && (ptr[0]>='a' && ptr[0]<='a'+SCRIPT_NUM_PARAMS-1) && (ptr[1]==' ' || ptr[1]=='\t'))
     {
         n = ptr[0]-'a';
         ptr = skip_whitespace(ptr+2);
@@ -153,7 +153,7 @@ static void process_range(const char *param)
     register int n;
 
     ptr = skip_whitespace(ptr);
-    if (ptr[0] && (ptr[0]>='a' && ptr[0]<='a'+SCRIPT_NUM_PARAMS) && (ptr[1]==' ' || ptr[1]=='\t'))
+    if (ptr[0] && (ptr[0]>='a' && ptr[0]<='a'+SCRIPT_NUM_PARAMS-1) && (ptr[1]==' ' || ptr[1]=='\t'))
     {
         n = ptr[0]-'a';
         ptr = skip_whitespace(ptr+2);
@@ -181,7 +181,7 @@ static void process_values(const char *param)
     register int n;
 
     ptr = skip_whitespace(ptr);
-    if (ptr[0] && (ptr[0]>='a' && ptr[0]<='a'+SCRIPT_NUM_PARAMS) && (ptr[1]==' ' || ptr[1]=='\t'))
+    if (ptr[0] && (ptr[0]>='a' && ptr[0]<='a'+SCRIPT_NUM_PARAMS-1) && (ptr[1]==' ' || ptr[1]=='\t'))
     {
         n = ptr[0]-'a';
         ptr = skip_whitespace(ptr+2);

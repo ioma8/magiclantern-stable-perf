@@ -377,12 +377,16 @@ vectorscope_addpixel(uint8_t y, int8_t u, int8_t v)
     V *= vectorscope_height;
     V >>= 8;
     V += vectorscope_height >> 1;
+    /* gray pixels (u/v == 128) compute to exactly height/width;
+     * clamp so we never index past the buffer (width*height entries) */
+    V = MIN(MAX(V, 0), vectorscope_height - 1);
 
     U *= vectorscope_width;
     U >>= 8;
     U += vectorscope_width >> 1;
+    U = MIN(MAX(U, 0), vectorscope_width - 1);
 
-    uint16_t pos = U + V * vectorscope_width;
+    uint32_t pos = U + V * vectorscope_width;
 
     /* increase luminance at this position. when reaching 4*0x2A, we are at maximum. */
     if(vectorscope[pos] < (0x2A << 2))

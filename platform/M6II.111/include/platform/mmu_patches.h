@@ -3,7 +3,7 @@
 
 #include "patch.h"
 
-#if CONFIG_FW_VERSION == 111 // ensure our hard-coded patch addresses are not broken
+#if !defined(CONFIG_FW_VERSION) || CONFIG_FW_VERSION == 111 // ensure our hard-coded patch addresses are not broken
                              // by a FW upgrade.
                              // M6ii has two internal versions for 1.1.1 fw though...
 struct patch early_data_patches[] =

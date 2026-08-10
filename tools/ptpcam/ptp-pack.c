@@ -95,6 +95,8 @@ ptp_unpack_string(PTPParams *params, char* data, uint16_t offset, uint8_t *len)
 	*len=dtoh8a(&data[offset]);
 	if (*len) {
 		string=malloc(*len);
+		if (string == NULL)
+			return NULL;
 		memset(string, 0, *len);
 		for (i=0;i<*len && i< PTP_MAXSTRLEN; i++) {
 			string[i]=(char)dtoh16a(&data[offset+i*2+1]);
@@ -124,7 +126,13 @@ ptp_unpack_uint32_t_array(PTPParams *params, char* data, uint16_t offset, uint32
 	uint32_t n, i=0;
 
 	n=dtoh32a(&data[offset]);
+	/* the count comes from the device; cap it so a hostile value cannot
+	 * overflow the malloc below (n * sizeof(uint32_t)) or read wildly */
+	if (n > PTP_MAX_ARRAY_COUNT)
+		n = PTP_MAX_ARRAY_COUNT;
 	*array = malloc (n*sizeof(uint32_t));
+	if (*array == NULL)
+		return 0;
 	while (n>i) {
 		(*array)[i]=dtoh32a(&data[offset+(sizeof(uint32_t)*(i+1))]);
 		i++;
@@ -138,7 +146,12 @@ ptp_unpack_uint16_t_array(PTPParams *params, char* data, uint16_t offset, uint16
 	uint32_t n, i=0;
 
 	n=dtoh32a(&data[offset]);
+	/* see ptp_unpack_uint32_t_array */
+	if (n > PTP_MAX_ARRAY_COUNT)
+		n = PTP_MAX_ARRAY_COUNT;
 	*array = malloc (n*sizeof(uint16_t));
+	if (*array == NULL)
+		return 0;
 	while (n>i) {
 		(*array)[i]=dtoh16a(&data[offset+(sizeof(uint16_t)*(i+2))]);
 		i++;

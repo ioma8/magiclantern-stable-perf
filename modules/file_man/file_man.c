@@ -485,14 +485,18 @@ static void BrowseUp()
 {
     view_file = 0;
 
-    char *p = gPath + strlen(gPath) - 2;
+    size_t path_len = strlen(gPath);
+    if (path_len < 2)
+        return; /* path too short to go up; avoid reading before the buffer */
+
+    char *p = gPath + path_len - 2;
     while (p > gPath && *p != '/')
         p--;
 
     if (*p == '/') /* up one level */
     {
         char old_dir[FIO_MAX_PATH_LENGTH];
-        snprintf(old_dir, sizeof(old_dir), p + 1);
+        snprintf(old_dir, sizeof(old_dir), "%s", p + 1); /* don't use a dir name as format string */
         *(p + 1) = 0;
         ScanDir(gPath);
         restore_menu_selection(old_dir);
@@ -932,6 +936,8 @@ static int mfile_get_count()
 static int path_strip_last_item(char *dst, int maxlen, char *src)
 {
     snprintf(dst, maxlen, "%s", src);
+    if (strlen(dst) < 2)
+        return 0;
     char *p = dst + strlen(dst) - 2;
     while (p > dst && *p != '/')
         p--;
@@ -1013,7 +1019,10 @@ MFILE_SEM (
 static MENU_SELECT_FUNC(select_by_extension)
 {
 MFILE_SEM (
-    char *ext = gPath + strlen(gPath) - 1;
+    size_t gpath_len = strlen(gPath);
+    if (gpath_len == 0)
+        return;
+    char *ext = gPath + gpath_len - 1;
     while (ext > gPath && *ext != '/' && *ext != '.')
         ext--;
     if (*ext == '.')
@@ -1026,7 +1035,11 @@ MFILE_SEM (
         
         for (struct file_entry *fe = file_entries; fe; fe = fe->next)
         {
-            char *fe_ext = fe->name + strlen(fe->name) - strlen(Ext);
+            size_t fe_len = strlen(fe->name);
+            size_t ext_len = strlen(Ext);
+            if (fe_len < ext_len)
+                continue; /* name shorter than the extension; can't match */
+            char *fe_ext = fe->name + fe_len - ext_len;
             if (streq(Ext, fe_ext))
             {
                 char path[FIO_MAX_PATH_LENGTH];

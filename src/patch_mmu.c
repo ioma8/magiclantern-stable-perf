@@ -362,7 +362,7 @@ static int calc_mmu_globals(uint32_t start_addr, uint32_t size)
             // pad to align on 0x400 for L2 tables
             L2_tables = (uint8_t *)ROUND_UP(L1_table_end, MMU_L2_TABLE_SIZE);
             uint32_t L2_tables_end = (uint32_t)L2_tables
-                                        + sizeof(MMU_L2_TABLE_SIZE) * num_64k_pages;
+                                        + MMU_L2_TABLE_SIZE * num_64k_pages;
 
             // need space for L2 info structs.  These are small
             // and may fit in the padding gap

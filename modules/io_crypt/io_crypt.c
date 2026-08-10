@@ -333,10 +333,10 @@ static uint32_t hook_iodev_OpenFile(void *iodev, char *filename, int32_t flags, 
         /* copy filename */
         strncpy(iocrypt_files[fd].filename, filename, sizeof(iocrypt_files[fd].filename));
         
-        char *ext = &filename[strlen(filename) - 3];
-        
-        /* analyze file */
-        if(!strcmp(ext, "CR2") || !strcmp(ext, "JPG"))
+        /* analyze file (guard against names shorter than the 3-char extension) */
+        size_t name_len = strlen(filename);
+        char *ext = name_len >= 3 ? &filename[name_len - 3] : NULL;
+        if(ext && (!strcmp(ext, "CR2") || !strcmp(ext, "JPG")))
         {
             /* when opening for read, first check if we really have to decrypt it */
             if((flags & 3) == O_RDONLY)

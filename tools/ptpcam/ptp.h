@@ -341,6 +341,11 @@ typedef struct _PTPObjectInfo PTPObjectInfo;
 /* max ptp string length INCLUDING terminating null character */
 
 #define PTP_MAXSTRLEN				255
+/* sanity cap for device-reported array counts: bounds the malloc in the
+ * unpack functions.  Real devices report a few hundred entries.  (The read
+ * loop still trusts the packet's declared length, as the rest of this file
+ * does, since the response buffer size is not plumbed through.) */
+#define PTP_MAX_ARRAY_COUNT			4096
 
 /* PTP Object Format Codes */
 

@@ -716,8 +716,15 @@ int FIO_CopyFile(const char * src, const char * dst)
     if (!g) { FIO_CloseFile(f); return -1; }
 
     const int bufsize = MIN(FIO_GetFileSize_direct(src), 128*1024);
-    void* buf = fio_malloc(bufsize);
-    if (!buf) return -1;
+    void* buf = bufsize > 0 ? fio_malloc(bufsize) : NULL;
+    if (bufsize > 0 && !buf)
+    {
+        /* close the files we opened, or we leak both handles and leave an empty dst file */
+        FIO_CloseFile(f);
+        FIO_CloseFile(g);
+        FIO_RemoveFile(dst);
+        return -1;
+    }
 
     int err = 0;
     int r = 0;
@@ -869,6 +876,11 @@ uint8_t* read_entire_file(const char * filename, int* buf_size)
     if( FIO_GetFileSize( filename, &size ) != 0 )
         goto getfilesize_fail;
 
+    /* size + 1 would wrap to 0 for a 4 GiB - 1 file; such files cannot be
+     * read into RAM anyway */
+    if (size == 0xFFFFFFFF)
+        goto getfilesize_fail;
+
     DEBUG("File '%s' size %d bytes", filename, size);
 
     uint8_t * buf = fio_malloc( size + 1);
@@ -914,6 +926,9 @@ my_fprintf(
     va_start( ap, fmt );
     len = vsnprintf( buf, maxlen-1, fmt, ap );
     va_end( ap );
+    /* vsnprintf returns the would-be length; clamp so FIO_WriteFile never
+     * reads past the buffer (negative returns become 0) */
+    len = MIN(MAX(len, 0), maxlen-1);
     FIO_WriteFile( file, buf, len );
     
     return len;

@@ -105,7 +105,8 @@ struct cbr_record * find_record(const char * event, unsigned int return_new) {
     }
     dbg_printf("No existing record found\n");
     if (first_free != NULL) {
-        strncpy(first_free->name, event, 16);
+        strncpy(first_free->name, event, sizeof(first_free->name) - 1);
+        first_free->name[sizeof(first_free->name) - 1] = '\0';
         first_free->first = NULL;
         dbg_printf("%s\n", first_free->name);
     }

@@ -38,13 +38,15 @@
     #error "No UINTPTR_MAX available, cannot safely build"
 #endif
 #if UINTPTR_MAX != 0xffffffff
-    #error "This code assumes 32-bit pointers, refusing to build."
+    #ifndef PTP_ALLOW_64BIT
+        #error "This code assumes 32-bit pointers, refusing to build."
 // This code was clearly intended for a 32-bit host, making assumptions
 // about pointer width in a few places, and packing values into buffers.
-// Is it possible to overflow buffers on cam if the host is 64-bit?
-// Looks plausible to me, so, I'm disabling such builds.
-// I might be wrong, feel free to confirm this and/or fix the code
-// to be portable.
+// The values packed are camera-side addresses (always 32-bit), so 64-bit
+// builds are believed safe, but we keep the refusal by default per
+// CONTRIBUTING.md ("no new compiler warnings", "safe enough").
+// Build with -DPTP_ALLOW_64BIT on platforms without 32-bit multilib support.
+    #endif
 #endif
 
 #ifdef ENABLE_NLS
@@ -207,10 +209,24 @@ ptp_usb_getdata (PTPParams* params, PTPContainer* ptp,
             ret = dtoh16(usbdata.code);
             break;
         }
-        /* evaluate data length */
+        /* evaluate data length; the container length must cover the bulk header,
+           otherwise the subtraction below underflows to a huge size */
+        if (dtoh32(usbdata.length) < PTP_USB_BULK_HDR_LEN)
+        {
+            ret = PTP_ERROR_BADPARAM;
+            break;
+        }
         len=dtoh32(usbdata.length)-PTP_USB_BULK_HDR_LEN;
         /* allocate memory for data if not allocated already */
-        if (*data==NULL) *data=calloc(1,len);
+        if (*data==NULL)
+        {
+            *data=calloc(1,len?len:1);  /* calloc(0) may return NULL on some systems */
+            if (*data==NULL)
+            {
+                ret = PTP_ERROR_IO;
+                break;
+            }
+        }
         /* copy first part of data to 'data' */
         memcpy(*data,usbdata.payload.data,
             PTP_USB_BULK_PAYLOAD_LEN<len?
@@ -386,6 +402,10 @@ ptp_usb_event (PTPParams* params, PTPContainer* event, int wait)
     if (result<0)
         return PTP_ERROR_IO;
     size=dtoh32(usbevent.length);
+    /* never read past our fixed-size event container, regardless of what the
+       device claims in the length field */
+    if ((uint32_t)size > sizeof(usbevent))
+        size = sizeof(usbevent);
     while (result<size) {
         CHECK_INT(usbevent, size);
         if (result<0)

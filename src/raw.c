@@ -854,6 +854,14 @@ static void raw_lv_realloc_buffer()
 
 #ifdef CONFIG_ALLOCATE_RAW_LV_BUFFER
     raw_allocated_lv_buffer = fio_malloc(RAW_LV_BUFFER_ALLOC_SIZE);
+    if (!raw_allocated_lv_buffer)
+    {
+        /* keep the previous buffer (or the default one); a NULL buffer would
+         * be handed to the EDMAC engine, which would DMA-write to address 0 */
+        printf("Could not allocate RAW LV buffer (%s), keeping the old one\n",
+               format_memory_size(RAW_LV_BUFFER_ALLOC_SIZE));
+        return;
+    }
     raw_lv_buffer = raw_allocated_lv_buffer;
     raw_lv_buffer_size = RAW_LV_BUFFER_ALLOC_SIZE;
     return;

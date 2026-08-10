@@ -538,7 +538,7 @@ uint32_t trace_write_binary(uint32_t context, uint8_t *buffer, uint32_t length)
 
     /* first copy TSC */
     memcpy(&ctx->buffer[ctx->buffer_write_pos], &tsc, sizeof(tsc));
-    ctx->buffer_write_pos += 4;
+    ctx->buffer_write_pos += sizeof(tsc);
 
     /* next is variable length */
     trace_write_varlength(context, length);

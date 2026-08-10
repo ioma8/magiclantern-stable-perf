@@ -173,6 +173,7 @@ static void dump_rom_task(void* priv, int unused)
         if (chunk_size * chunk_count != ROM0_SIZE) // didn't divide cleanly by chunk_count
         {
             bmp_printf(FONT_LARGE, 0, 130, "Err, unexpected ROM size: %d", ROM0_SIZE);
+            FIO_CloseFile(f); // don't leak the handle on the error path
             return;
         }
         chunk_save(f, ROM0_ADDR, chunk_size, chunk_count, 130);
@@ -199,6 +200,7 @@ static void dump_rom_task(void* priv, int unused)
         if (chunk_size * chunk_count != ROM1_SIZE) // didn't divide cleanly by chunk_count
         {
             bmp_printf(FONT_LARGE, 0, 220, "Err, unexpected ROM size: %d", ROM1_SIZE);
+            FIO_CloseFile(f); // don't leak the handle on the error path
             return;
         }
         chunk_save(f, ROM1_ADDR, chunk_size, chunk_count, 220);

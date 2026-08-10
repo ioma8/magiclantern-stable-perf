@@ -53,8 +53,10 @@ int get_digic_version(void)
 
 PROP_HANDLER(PROP_CAM_MODEL)
 {
-    memcpy((char *)&camera_model_id, (void*)buf + 32, 4);
-    snprintf(camera_model, sizeof(camera_model), (const char *)buf);
+    if (len >= 36)
+        memcpy((char *)&camera_model_id, (void*)buf + 32, 4);
+    /* don't use the payload as a printf format; bound the read to len */
+    snprintf(camera_model, sizeof(camera_model), "%.*s", (int)len, (const char *)buf);
 }
 
 PROP_HANDLER(PROP_BODY_ID)
@@ -62,7 +64,10 @@ PROP_HANDLER(PROP_BODY_ID)
     /* different camera serial lengths */
     if(len == 8)
     {
-        snprintf(camera_serial, sizeof(camera_serial), "%X%08X", (uint32_t)(*((uint64_t*)buf) & 0xFFFFFFFF), (uint32_t) (*((uint64_t*)buf) >> 32));
+        /* memcpy avoids an unaligned 64-bit load (buf is only 4-aligned) */
+        uint64_t serial;
+        memcpy(&serial, buf, 8);
+        snprintf(camera_serial, sizeof(camera_serial), "%X%08X", (uint32_t)(serial & 0xFFFFFFFF), (uint32_t)(serial >> 32));
     }
     else if(len == 4)
     {
@@ -76,7 +81,7 @@ PROP_HANDLER(PROP_BODY_ID)
 
 PROP_HANDLER(PROP_FIRMWARE_VER)
 {
-    snprintf(firmware_version, sizeof(firmware_version), (const char *)buf);
+    snprintf(firmware_version, sizeof(firmware_version), "%.*s", (int)len, (const char *)buf);
 }
 
 volatile PROP_INT(PROP_LV_DISPSIZE, lv_dispsize);

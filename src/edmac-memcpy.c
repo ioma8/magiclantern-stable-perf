@@ -407,6 +407,17 @@ void edmac_raw_slurp(void* dst, int w, int h)
     uint32_t dmaFlags = EDMAC_8_BYTES_PER_TRANSFER;
 #endif
 
+    /* same constraint as edmac_copy_rectangle_cbr_start(): the transfer size
+     * must be a multiple of the bytes-per-transfer, or the EDMAC engine may
+     * not terminate cleanly ("Do not remove this check, or risk permanent
+     * camera bricking").  Also reject a zero height (yb = h-1 would become
+     * 0xFFFFFFFF, i.e. an effectively unbounded transfer). */
+    if (h <= 0 || w <= 0 || ((uint32_t)w * h) % edmac_bytes_per_transfer(dmaFlags))
+    {
+        printf("Invalid EDMAC slurp size: %d x %d\n", w, h);
+        return;
+    }
+
     /* @g3gg0: this callback does get called */
     RegisterEDmacCompleteCBR(raw_write_chan, &edmac_slurp_complete_cbr, 0);
     RegisterEDmacAbortCBR(raw_write_chan, &edmac_slurp_complete_cbr, 0);

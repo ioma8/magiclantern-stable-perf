@@ -1004,6 +1004,16 @@ void* __mem_malloc(size_t size, unsigned int flags, const char *file, unsigned i
     return 0;
 }
 
+/* returns the size of a block previously allocated with malloc().
+ * memcheck_malloc always stores a header with the requested length
+ * MEM_SEC_ZONE bytes before the user pointer, so this is exact. */
+uint32_t malloc_size(void *ptr)
+{
+    if (!ptr)
+        return 0;
+    return ((struct memcheck_hdr *)((uintptr_t)ptr - MEM_SEC_ZONE))->length;
+}
+
 void __mem_free(void *buf)
 {
     if (!buf)

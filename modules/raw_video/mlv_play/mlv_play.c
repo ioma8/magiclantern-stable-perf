@@ -310,6 +310,8 @@ static int mlv_play_delete_work(char *filename)
     char current_file[128];
     
     /* original extension, to be used as read-only */
+    if (strlen(filename) < 3)
+        return 0; /* too short to have an extension; don't read before the buffer */
     const char* main_ext = filename + strlen(filename) - 3;
     
     trace_write(mlv_play_trace_ctx, "[Delete] Delete request for: '%s'", filename);
@@ -1346,8 +1348,11 @@ static FILE **mlv_play_load_chunks(char *base_filename, uint32_t *entries)
     (*entries)++;
     while(seq_number < 99)
     {
-        files = realloc(files, (*entries + 1) * sizeof(FILE*));
-        
+        FILE **new_files = realloc(files, (*entries + 1) * sizeof(FILE*));
+        if (new_files == NULL)
+            break; /* out of memory; keep the files found so far (realloc leaves the old block intact) */
+        files = new_files;
+
         /* check for the next file M00, M01 etc */
         char seq_name[3];
 
@@ -2389,11 +2394,16 @@ static void mlv_playlist_build_path(char *directory)
         }
         else
         {
-            char *suffix = &file_info.name[strlen(file_info.name) - 3];
+            size_t name_len = strlen(file_info.name);
+            if (name_len < 3)
+                continue; /* can't be an MLV/RAW file */
+            char *suffix = &file_info.name[name_len - 3];
             
             if(!strcmp("RAW", suffix) || !strcmp("MLV", suffix))
             {
                 playlist_entry_t *entry = malloc(sizeof(playlist_entry_t));
+                if (entry == NULL)
+                    continue;
                 
                 strncpy(entry->fullPath, full_path, sizeof(entry->fullPath));
                 entry->fileSize = file_info.size;

@@ -63,6 +63,7 @@ installer/*/build
 installer/build
 doc/Cropmarks550D.png
 contrib/ptpcam/ptpcam
+tools/ptpcam/ptpcam
 contrib/make-bootable/exfat_sum
 doc/cam
 INSTALL.tex-e

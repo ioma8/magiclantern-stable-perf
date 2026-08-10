@@ -26,9 +26,15 @@ AR = $(CROSS_COMPILE)ar
 OBJCOPY = $(CROSS_COMPILE)objcopy
 STRIP = $(CROSS_COMPILE)strip
 
+# GNU stat uses -c, BSD stat (macOS) uses -f
+UNAME_S := $(shell uname -s)
+ifeq ($(UNAME_S),Darwin)
+STAT_CMD = stat -f "%N: %z bytes"
+else
 STAT_CMD = stat -c "%n: %s bytes"
+endif
 GREP = grep
-READELF = readelf
+READELF ?= $(CROSS_COMPILE)readelf
 AWK = awk
 DATE = date -u
 CP = cp

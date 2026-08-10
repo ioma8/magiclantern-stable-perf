@@ -1404,8 +1404,9 @@ PROP_HANDLER( PROP_LENS_NAME )
 PROP_HANDLER(PROP_LENS)
 {
     uint8_t* info = (uint8_t *) buf;
-    
+
     #ifdef CONFIG_5DC
+    if (len < 4) return; // need info[2], info[3]
     lens_info.lens_exists = 0;
     lens_info.raw_aperture_min = info[2];
     lens_info.raw_aperture_max = info[3];
@@ -1416,6 +1417,7 @@ PROP_HANDLER(PROP_LENS)
     lens_info.lens_version = 0;
     lens_info.lens_capabilities = 0;
     #else
+    if (len < 0xF) return; // need info[0..8] and info[0xE]
     lens_info.lens_exists = info[0];
     lens_info.raw_aperture_min = info[1];
     lens_info.raw_aperture_max = info[2];
@@ -1731,11 +1733,13 @@ static uint16_t custom_wb_gains[128];
 PROP_HANDLER(PROP_CUSTOM_WB)
 {
     ASSERT(len <= sizeof(custom_wb_gains));
+    if (len < 40) return; // need at least gains[0..19] (20 x uint16) for the reads below
+    if (len > sizeof(custom_wb_gains))
+        len = sizeof(custom_wb_gains); // ASSERT is debug-only; never overflow the copy
     memcpy(custom_wb_gains, buf, len);
-    const uint16_t * gains = (uint16_t *) buf;
-    lens_info.WBGain_R = gains[16];
-    lens_info.WBGain_G = gains[18];
-    lens_info.WBGain_B = gains[19];
+    lens_info.WBGain_R = custom_wb_gains[16];
+    lens_info.WBGain_G = custom_wb_gains[18];
+    lens_info.WBGain_B = custom_wb_gains[19];
 }
 #endif
 
@@ -1900,9 +1904,10 @@ static struct prop_lv_lens lv_lens_raw;
 PROP_HANDLER( PROP_LV_LENS )
 {
     ASSERT(len <= sizeof(struct prop_lv_lens));
-    memcpy(&lv_lens_raw, buf, sizeof(struct prop_lv_lens));
+    if (len < 6) return; // need focal_len + focus_dist + focus_pos (6 bytes)
+    memcpy(&lv_lens_raw, buf, MIN(len, sizeof(struct prop_lv_lens)));
 
-    const struct prop_lv_lens * const lv_lens = (void*) buf;
+    const struct prop_lv_lens * const lv_lens = &lv_lens_raw;
     lens_info.focal_len     = bswap16( lv_lens->focal_len );
     lens_info.focus_dist    = bswap16( lv_lens->focus_dist );
     lens_info.focus_pos     = (int16_t) bswap16( lv_lens->focus_pos );
