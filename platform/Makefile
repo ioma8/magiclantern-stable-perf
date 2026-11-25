@@ -71,6 +71,7 @@ CAM_MODULES_DIR = $(BUILD_DIR)/modules
 ML_CAMS = \
     100D.101 \
     1100D.105 \
+    1300D.110 \
     200D.101 \
     500D.111 \
     50D.109 \
@@ -379,7 +380,6 @@ ML_SRC_OBJS_00 = \
     raw.o \
     chdk-dng.o \
     edmac-memcpy.o \
-    sd.o \
     cache_hacks.o \
     patch.o \
     picstyle.o \
